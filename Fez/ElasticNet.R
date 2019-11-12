@@ -2,7 +2,9 @@
 library(ISLR)
 library(glmnet)
 data=read.csv("basement.csv")[,-1]
-data2=read.csv("attic.csv")[,-1]
+data=data[1:1460,]
+obs=1460
+#data=read.csv("train12_git.csv")[,-1]
 #Need matrices for glmnet() function. Automatically conducts conversions as well
 #for factor variables into dummy variables.
 x = model.matrix(SalePrice ~ ., data)[, -1] #Dropping the intercept column.
@@ -24,10 +26,10 @@ plot(ridge.models, xvar = "lambda", label = TRUE, main = "Ridge Regression")
 #approximately 70% of our data in the training set and 30% of our data in the
 #test set.
 set.seed(0)
-train = sample(1:1460, 7*1460/10)
+train = sample(1:obs, 7*obs/10)
 test = (-train)
-test=c(1:1460)
-final=c(1461:2919)
+#test=c(1:obs)
+#final=c(1461:2919)
 y.test = y[test]
 
 length(train)/nrow(x)
@@ -65,7 +67,7 @@ mean((ridge.bestlambdatrain - y.test)^2)
 library(caret)
 set.seed(0)
 train_control = trainControl(method = 'cv', number=10)
-tune.grid = expand.grid(lambda = grid, alpha=c(1))
+tune.grid = expand.grid(lambda = grid, alpha=c(0))
 ridge.caret = train(x[train, ], y[train],
                     method = 'glmnet',
                     trControl = train_control, tuneGrid = tune.grid)
@@ -81,7 +83,7 @@ plot(ridge.caret, xTrans=log)
 ### Predicting with the final model
 pred = predict.train(ridge.caret , newdata = x[test,])
 mean((pred - y[test])^2)
-
+mean(100*abs(pred - y[test])/y[test])
 
 
 
@@ -90,8 +92,8 @@ mean((pred - y[test])^2)
 ##########################
 #Fitting the lasso regression. Alpha = 1 for lasso regression.
 lasso.models = glmnet(x, y, alpha = 1, lambda = grid)
-lasso.models = glmnet(x, y, alpha = 1, lambda = bestlambda.lasso)
-dim(coef(lasso.models)) #20 different coefficients, estimated 100 times --
+#lasso.models = glmnet(x, y, alpha = 1, lambda = bestlambda.lasso)
+ dim(coef(lasso.models)) #20 different coefficients, estimated 100 times --
 #once each per lambda value.
 coef(lasso.models) #Inspecting the various coefficient estimates.
 
@@ -140,6 +142,7 @@ mean((lasso.bestlambdatrain - y.test)^2)
 
 #This time the MSE is actually higher at approximately 113,636. What happened?
 x0=1965392410
+set.seed(0)
 ### Exercise: Tune the same lasso model with caret!
 for (i in 1:10){
   set.seed(0)
@@ -154,12 +157,13 @@ lasso.bestlambdatrain = predict(lasso.models.train, s = bestlambda.lasso, newx =
 x1=mean((lasso.bestlambdatrain - y.test)^2)
 if (x1<=x0)
 {x0=x1
-  print(paste("alpha=",i, "lambda=",cv.lasso.out$lambda.min))} 
+  print(paste("alpha=",i, "lambda=",cv.lasso.out$lambda.min))
+  print(paste("MSE=",x0))} 
 }
 #prices=data.frame(data$SalePrice)[final,]
 library(dplyr)
 #prices<- prices %>% mutate(., "predict"=lasso.bestlambdatrain)
 #prices<-prices %>% mutate(., "residual"=data.SalePrice-predict)
-data4=predict(lasso.models.train, s = bestlambda.lasso, newx = x[final,])
+mean(abs(y.test-predict(lasso.models.train, s = bestlambda.lasso, newx = x[test,]))*100/y.test)
 data3=read.csv("attic.csv")
 data3$SalePrice=data4
