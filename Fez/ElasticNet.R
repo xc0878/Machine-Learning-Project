@@ -1,15 +1,22 @@
 
-#library(ISLR)
+
+
+# Working with glmnet, importing file. Set variable "obs" to number of observations in the training data
+
 library(glmnet)
 data=read.csv("basement.csv")[,-1]
-obs=1460
+obs=1458
 data=data[1:obs,]
 
+# x puts the data into a form compatible with glmnet methods. y is shown to be skewed and therefore log transformed
 
 x = model.matrix(SalePrice ~ ., data)[, -1] 
 y = data$SalePrice
 hist(y)
 y=log(y)
+
+# range of lambda values for grid search
+
 grid = 10^seq(5, -2, length = 100)
 ridge.models = glmnet(x, y, alpha = 0, lambda = grid)
 
@@ -20,14 +27,11 @@ coef(ridge.models) #Inspecting the various coefficient estimates.
 #Visualizing the ridge regression shrinkage.
 plot(ridge.models, xvar = "lambda", label = TRUE, main = "Ridge Regression")
 
-#Creating training and testing sets. Here we decide to use a 70-30 split with
-#approximately 70% of our data in the training set and 30% of our data in the
-#test set.
+# Sampling 70% of the trainign data for training, the rest for testing the model  
+
 set.seed(0)
 train = sample(1:obs, 7*obs/10)
 test = (-train)
-#test=c(1:obs)
-#final=c(1461:2919)
 y.test = y[test]
 
 length(train)/nrow(x)
@@ -41,7 +45,7 @@ ridge.lambda5 = predict(ridge.models.train, s = 5, newx = x[test, ])
 sqrt(mean((ridge.lambda5 - y.test)^2))
 
 
-#Running 10-fold cross validation.
+#Running 10-fold cross validation on ridge model.
 set.seed(0)
 cv.ridge.out = cv.glmnet(x[train, ], y[train],
                          lambda = grid, alpha = 0, nfolds = 10)
@@ -96,13 +100,9 @@ lasso.models.train = glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
 lasso.lambda5 = predict(lasso.models.train, s = 5, newx = x[test, ])
 sqrt(mean((lasso.lambda5 - y.test)^2))
 
-#Here, the MSE is approximately 107,660.
 
-#Instead of arbitrarily choosing random lambda values and calculating the MSE
-#manually, it's a better idea to perform cross-validation in order to choose
-#the best lambda over a slew of values.
 
-#Running 10-fold cross validation.
+#Running 10-fold cross validation for lambda of lasso model
 set.seed(0)
 cv.lasso.out = cv.glmnet(x[train, ], y[train],
                          lambda = grid, alpha = 1, nfolds = 10)
@@ -115,10 +115,11 @@ log(bestlambda.lasso)
 lasso.bestlambdatrain = predict(lasso.models.train, s = bestlambda.lasso, newx = x[test, ])
 sqrt(mean((lasso.bestlambdatrain - y.test)^2))
 
-#This time the MSE is actually higher at approximately 113,636. What happened?
+# Runnign 10-fold cross-validation for Elastic Net model parameters alpha, lambda
+
 x0=1965392410
 alph=0
-### Exercise: Tune the same lasso model with caret!
+
 for (i in 1:10){
   set.seed(0)
   cv.lasso.out = cv.glmnet(x[train, ], y[train],
@@ -144,11 +145,16 @@ if (x1<=x0)
 
 lasso.models.train = glmnet(x[train, ], y[train], alpha = alph, lambda = grid)
 mean(abs(y.test-predict(lasso.models.train, s = bestlambda.lasso, newx = x[test,]))*100/y.test)
+
+#rmse for elastic net model
+
 print(paste("rMSEl=",sqrt(mean((log(predict(lasso.models.train, s = bestlambda.lasso, newx = x[test,])) - log(y.test))^2))))
+
+# Boosting elastic net by adding predicted SalesPrice values to x data, using epsilon (residuals) as y
 
 epsilon=y[train]-predict(lasso.models.train, s = bestlambda.lasso, newx = x[train,])
 epsilon1=y[test]-predict(lasso.models.train, s = bestlambda.lasso, newx = x[test,])
-#data1=data[1:obs,!(colnames(data)=="SalePrice")]
+
 data1=data[1:obs,]
 data1["SalePrice"]=predict(lasso.models.train, s = bestlambda.lasso, newx = x)
 data1[,'epsilon']=integer(obs)
@@ -176,7 +182,7 @@ grid = 10^seq(5, -2, length = 100)
 lasso.models.train1 = glmnet(x1[train1, ], y1[train1], alpha = 1, lambda = grid)
 x00=1965392410
 alph2=0
-### Exercise: Tune the same lasso model with caret!
+### Grid search for elastic net parameters of epsilon model
 for (i in 1:10){ 
   set.seed(0)
   cv.lasso.out = cv.glmnet(x1[train1, ], y1[train1],
@@ -204,37 +210,40 @@ lasso.models.train1 = glmnet(x1[train1, ], y1[train1], alpha = alph2, lambda = g
 mean(abs((y.test1-predict(lasso.models.train1, s = bestlambda.lasso1, newx = x1[test1,]))*100/y.test1))
 mean(abs(y.test-predict(lasso.models.train, s = bestlambda.lasso, newx = x[test,])-predict(lasso.models.train1, s = bestlambda.lasso1, newx = x1[test,]))*100/y.test)
 mean(abs(y.test-predict(lasso.models.train, s = bestlambda.lasso, newx = x[test,])-predict(lasso.models.train1, s = bestlambda.lasso1, newx = x1[test,]))*100/y.test)
+
+# rmse of boosted model
+
 sqrt(mean((log(y.test)-log(predict(lasso.models.train, s = bestlambda.lasso, newx = x[test,])+predict(lasso.models.train1, s = bestlambda.lasso1, newx = x1[test,])))^2))
 
-data=read.csv("basement.csv")[,-1]
-data=data[1461:2919, ]
+# applying the boosted elastic net to testing data for submission
 
-x = model.matrix(SalePrice ~ ., data)[, -1] #Dropping the intercept column.
+data=read.csv("basement.csv")[,-1]
+#data=data[1459:2917, ]
+
+x = model.matrix(SalePrice ~ ., data)[, -1] 
 y = data$SalePrice
 Prices=exp(predict(lasso.models.train, s = bestlambda.lasso, newx = x))
 data["SalePrice"]=predict(lasso.models.train, s = bestlambda.lasso, newx = x)
-data[,'epsilon']=integer(obs-1)
+data[,'epsilon']=integer(2917)
 
 epsilon=y-predict(lasso.models.train, s = bestlambda.lasso, newx = x)
 epsilon1=y-predict(lasso.models.train, s = bestlambda.lasso, newx = x)
 
-x = model.matrix(SalePrice ~ ., data)[, -1] #Dropping the intercept column.
+x = model.matrix(SalePrice ~ ., data)[, -1] 
 y = data$SalePrice
 
 
-#data1=data[1:obs,!(colnames(data)=="SalePrice")]
-
-
+data1['epsilon']=epsilon
 for (j in row.names(epsilon)){
   data1[j,'epsilon']=epsilon[row.names(epsilon)==j,]
 }
 for (j in row.names(epsilon1)){
   data1[j,'epsilon']=epsilon1[row.names(epsilon1)==j,]
 }
-x1 = model.matrix(epsilon ~ ., data1)[, -1] #Dropping the intercept column.
+x1 = model.matrix(epsilon ~ ., data1)[, -1] 
 y1 = data1$epsilon
 
 
 Prices=Prices-exp(predict(lasso.models.train1, s = bestlambda.lasso1, newx = x))
 
-write.csv(data.frame(Prices), "submission.csv")
+write.csv(data.frame(Prices), "elasticnet.csv")
