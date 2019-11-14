@@ -1,0 +1,24 @@
+Notes from today's meeting:
+
+Xing is doing XGBoost
+Alex is linear boost
+Aaron Elastic Net
+Yan Gradient Boost
+
+We will meet Thursday afternoon with completed models and results outputed for presentation
+try to include everything discussed in lecture code to include:
+
+Treatment of the data (reasons)
+Choice of the model (reasons)
+Parameters (analysis)
+Error values
+Results
+Illustrative plot
+
+
+Please contribute code to produce all output so that others have an easy time. Make a note of when the code is
+final and ready to use.
+
+Thursday 14 November 12:30 and 3:00 meeting to present model results and choose data set
+Friday 15 November 12:30 meeting to discuss presentation
+Sunday 17 November all day presentation workthrough 
